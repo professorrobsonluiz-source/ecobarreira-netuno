@@ -11,6 +11,25 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+st.markdown("""
+<style>
+    header[data-testid="stHeader"] {
+        display: none;
+    }
+
+    [data-testid="stToolbar"] {
+        display: none;
+    }
+
+    #MainMenu {
+        visibility: hidden;
+    }
+
+    .block-container {
+        padding-top: 1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 PASTA = Path(__file__).parent
 LOGO = PASTA / "logo_netuno.png"
