@@ -532,47 +532,25 @@ def mostrar_painel(
             if situacao == "CRÍTICO" else "#334155"
         )
 
-        st.markdown(
-            f"""
-            <div class="netuno-alerta">
-                <div style="
-                    color:#cbd5e1;
-                    font-size:13px;
-                    letter-spacing:1px;
-                ">
-                    NÍVEL DE ALERTA
-                </div>
-
-                <div class="netuno-semaforo">
-                    <div class="netuno-luz"
-                         style="background:{verde};"></div>
-                    <div class="netuno-luz"
-                         style="background:{amarelo};"></div>
-                    <div class="netuno-luz"
-                         style="background:{vermelho};"></div>
-                </div>
-
-                <div style="
-                    color:{cor};
-                    font-size:clamp(19px,2vw,29px);
-                    font-weight:800;
-                    overflow-wrap:anywhere;
-                    margin-bottom:15px;
-                ">
-                    {escape(situacao)}
-                </div>
-
-                <div style="
-                    color:#e2e8f0;
-                    font-size:15px;
-                    line-height:1.6;
-                ">
-                    {escape(mensagem)}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+           html_alerta = f"""
+<div class="netuno-alerta">
+    <div style="color:#cbd5e1;font-size:13px;letter-spacing:1px;">
+        NÍVEL DE ALERTA
+    </div>
+    <div class="netuno-semaforo">
+        <div class="netuno-luz" style="background:{verde};"></div>
+        <div class="netuno-luz" style="background:{amarelo};"></div>
+        <div class="netuno-luz" style="background:{vermelho};"></div>
+    </div>
+    <div style="color:{cor};font-size:25px;font-weight:800;margin-bottom:15px;">
+        {escape(situacao)}
+    </div>
+    <div style="color:#e2e8f0;font-size:15px;line-height:1.6;">
+        {escape(mensagem)}
+    </div>
+</div>
+"""
+        st.markdown(html_alerta, unsafe_allow_html=True)
 
     st.divider()
 
