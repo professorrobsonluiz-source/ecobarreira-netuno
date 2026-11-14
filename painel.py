@@ -11,6 +11,10 @@ PASTA = Path(__file__).parent
 LOGO = PASTA / 'logo_netuno.png'
 # Endereço acessível somente na rede local do dispositivo.
 IP_ESP32 = 'http://10.225.196.237'
+# Endereço temporário do túnel Cloudflare. Troque quando reiniciar o túnel.
+CAMERA_URL = 'https://tenant-instructors-suse-cake.trycloudflare.com'
+# Configure como False quando não quiser expor a câmera no painel público.
+CAMERA_HABILITADA = True
 
 if 'historico_real' not in st.session_state:
     st.session_state.historico_real = []
@@ -82,6 +86,42 @@ def mostrar_status(titulo, detalhe, cor):
     st.markdown(html, unsafe_allow_html=True)
 
 
+def camera_disponivel():
+    if not CAMERA_HABILITADA or not CAMERA_URL:
+        return False
+    try:
+        resposta = requests.get(CAMERA_URL.rstrip('/') + '/foto', timeout=5)
+        return resposta.ok and resposta.headers.get('content-type', '').lower().startswith('image/')
+    except requests.RequestException:
+        return False
+
+
+def mostrar_camera(modo_atual):
+    if not CAMERA_HABILITADA:
+        st.info('Câmera desativada. Ative CAMERA_HABILITADA para exibir imagens.')
+        return
+    # O Streamlit busca a foto no servidor: o navegador do visitante não precisa
+    # acessar o IP local da câmera. O fragmento atualiza a imagem a cada 3 segundos.
+    def atualizar_foto():
+        try:
+            resposta = requests.get(CAMERA_URL.rstrip('/') + '/foto', timeout=5)
+            resposta.raise_for_status()
+            if not resposta.headers.get('content-type', '').lower().startswith('image/'):
+                raise ValueError('Resposta não é uma imagem')
+            st.image(resposta.content, use_container_width=True)
+            st.caption('Imagens atualizadas aproximadamente a cada 3 segundos • ESP32-CAM')
+        except (requests.RequestException, ValueError):
+            st.warning('Câmera indisponível. Verifique o Flask, o Cloudflare e o endereço CAMERA_URL.')
+    if modo_atual == 'Demonstração':
+        @st.fragment(run_every='3s')
+        def camera_demo():
+            atualizar_foto()
+        camera_demo()
+    else:
+        # Já é atualizado pelo fragmento de monitoramento a cada 5 segundos.
+        atualizar_foto()
+
+
 def mostrar_painel(distancia, nivel, conectado, horario, modo_atual):
     situacao, cor, mensagem = classificar(nivel, conectado)
     st.subheader('📡 Status do sistema')
@@ -94,7 +134,7 @@ def mostrar_painel(distancia, nivel, conectado, horario, modo_atual):
         else:
             mostrar_status('Sensor de resíduos', 'Offline • Sem comunicação', '#ef4444')
     with col_camera_status:
-        mostrar_status('Câmera de monitoramento', 'Aguardando integração do vídeo', '#94a3b8')
+        mostrar_status('Câmera de monitoramento', 'Integração configurada • A disponibilidade depende do túnel', '#38bdf8' if CAMERA_HABILITADA else '#94a3b8')
     st.divider()
 
     st.subheader('📊 Indicadores ambientais')
@@ -112,7 +152,7 @@ def mostrar_painel(distancia, nivel, conectado, horario, modo_atual):
     col_camera, col_alerta = st.columns([3, 2], gap='large')
     with col_camera:
         st.subheader('📷 Câmera de monitoramento')
-        st.markdown('''<div class="netuno-video"><div style="font-size:52px;">📷</div><div style="font-size:20px;font-weight:700;margin-top:10px;color:#fff;">Monitoramento por imagem</div><div style="font-size:14px;margin-top:10px;color:#cbd5e1;">Transmissão em tempo real ainda não disponível.</div><div style="margin-top:20px;padding:8px 15px;background:#173654;border:1px solid #285782;border-radius:20px;font-size:12px;color:#cbd5e1;">Aguardando conexão da câmera</div></div>''', unsafe_allow_html=True)
+        mostrar_camera(modo_atual)
 
     with col_alerta:
         st.subheader('🚦 Central de alertas')
