@@ -1,8 +1,6 @@
-import os
 from datetime import datetime
 from html import escape
 from pathlib import Path
-from urllib.parse import urlparse
 
 import requests
 import streamlit as st
@@ -10,11 +8,6 @@ import streamlit as st
 st.set_page_config(page_title="NETUNO VISION | Ecobarreira Inteligente", page_icon="🔱", layout="wide", initial_sidebar_state="collapsed")
 ROOT = Path(__file__).resolve().parent
 LOGO = ROOT / "logo_netuno.png"
-try:
-    CAMERA_DEFAULT = str(st.secrets.get("CAMERA_URL", os.getenv("CAMERA_URL", ""))).strip()
-except Exception:
-    CAMERA_DEFAULT = os.getenv("CAMERA_URL", "").strip()
-
 st.markdown("""
 <style>
 :root {color-scheme: dark;}
@@ -87,21 +80,10 @@ st.markdown('<div class="section-title">Monitoramento e alertas</div>', unsafe_a
 cam_col, alert_col = st.columns([7, 3], gap="large")
 with cam_col:
     st.markdown('### 📷 Câmera da ecobarreira')
-    with st.expander("⚙️ Configurar endereço da câmera", expanded=False):
-        camera_input = st.text_input("Endereço HTTPS do túnel Cloudflare (sem /foto)", value="https://camera.netunovision.com.br", placeholder="https://exemplo.trycloudflare.com")
-        st.caption("O túnel é temporário. A câmera só ficará acessível enquanto notebook, Flask e Cloudflare estiverem ligados. Evite divulgar o link publicamente.")
-    camera_url = camera_input.strip().rstrip("/")
-    parsed = urlparse(camera_url)
-    valid = (parsed.scheme == "https" and bool(parsed.hostname) and parsed.hostname == "camera.netunovision.com.br" and parsed.path in ("", "/") and not parsed.username and not parsed.password and parsed.port is None and not parsed.query and not parsed.fragment)
+    camera_url = "https://camera.netunovision.com.br"
 
     @st.fragment(run_every="5s")
     def show_camera():
-        if not camera_url:
-            st.markdown('<div class="camera-empty"><div style="font-size:42px">📷</div><strong>Aguardando conexão da câmera</strong><span>Informe o endereço Cloudflare acima.</span></div>', unsafe_allow_html=True)
-            return
-        if not valid:
-            st.error("Utilize o endereço HTTPS oficial da câmera NETUNO VISION.")
-            return
         try:
             response = requests.get(camera_url + "/foto", timeout=6)
             response.raise_for_status()
@@ -112,7 +94,7 @@ with cam_col:
             st.image(response.content, use_container_width=True)
             st.caption("Imagem real da ESP32-CAM · Atualização aproximada a cada 5 segundos")
         except (requests.RequestException, ValueError):
-            st.warning("Câmera indisponível. Verifique Flask, Cloudflare e o endereço do túnel.")
+            st.warning("Câmera indisponível. Verifique se a ESP32-CAM, o Flask e o Cloudflare Tunnel estão funcionando.")
     show_camera()
 with alert_col:
     st.markdown('### 🚦 Central de alertas')
