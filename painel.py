@@ -1,9 +1,8 @@
-from datetime import datetime
-from html import escape
 from pathlib import Path
 
 import requests
 import streamlit as st
+import altair as alt
 
 st.set_page_config(page_title="NETUNO VISION | Ecobarreira Inteligente", page_icon="🔱", layout="wide", initial_sidebar_state="collapsed")
 ROOT = Path(__file__).resolve().parent
@@ -42,6 +41,11 @@ hr {border-color:#285578!important;opacity:.65;}
 .material-name {color:#fff;font-weight:700;font-size:1rem;}
 .material-value {color:#fff;font-size:1.7rem;font-weight:800;margin:5px 0;}
 .note {color:#b5cee2;font-size:.85rem;line-height:1.55;}
+.compact-card {min-height:220px;display:flex;flex-direction:column;justify-content:center;}
+.status-subtitle {font-size:.78rem;letter-spacing:.12em;color:#dbeafe;text-align:center;}
+.occupancy-number {font-size:2.6rem;font-weight:850;color:#fff;text-align:center;margin:12px 0;}
+.occupancy-track {height:12px;background:#294863;border-radius:99px;margin:6px 0 14px;overflow:hidden;}
+.occupancy-fill {width:0%;height:100%;background:#38bdf8;border-radius:99px;}
 .footer-note {text-align:center;color:#9fbad0;font-size:.82rem;padding:20px 0;}
 @media(max-width:850px){[data-testid="stMainBlockContainer"],.block-container{padding:1rem .8rem 2rem!important;}.materials{grid-template-columns:repeat(2,minmax(0,1fr));}.brand{font-size:2rem;}}
 </style>
@@ -77,15 +81,18 @@ with d:
 st.caption("Sem dados simulados: a ocupação e as contagens serão exibidas após a implementação e validação da IA.")
 
 st.markdown('<div class="section-title">Monitoramento e alertas</div>', unsafe_allow_html=True)
-cam_col, alert_col = st.columns([7, 3], gap="large")
-with cam_col:
-    st.markdown('### 📷 Câmera da ecobarreira')
-    camera_url = "https://camera.netunovision.com.br"
+st.markdown('### 📷 Câmera da ecobarreira')
 
+# A câmera permanece conectada ao endereço permanente do Cloudflare.
+CAMERA_URL = "https://camera.netunovision.com.br"
+
+# Centralização para evitar que a imagem ocupe toda a largura da tela.
+left_space, camera_column, right_space = st.columns([1, 2, 1], gap="small")
+with camera_column:
     @st.fragment(run_every="5s")
     def show_camera():
         try:
-            response = requests.get(camera_url + "/foto", timeout=6)
+            response = requests.get(CAMERA_URL + "/foto", timeout=6)
             response.raise_for_status()
             if not response.headers.get("content-type", "").lower().startswith("image/"):
                 raise ValueError("O servidor não retornou uma imagem")
@@ -94,11 +101,26 @@ with cam_col:
             st.image(response.content, use_container_width=True)
             st.caption("Imagem real da ESP32-CAM · Atualização aproximada a cada 5 segundos")
         except (requests.RequestException, ValueError):
-            st.warning("Câmera indisponível. Verifique se a ESP32-CAM, o Flask e o Cloudflare Tunnel estão funcionando.")
+            st.warning("Câmera indisponível. Verifique a ESP32-CAM, o Flask e o Cloudflare Tunnel.")
     show_camera()
-with alert_col:
+
+alert_column, occupancy_column = st.columns(2, gap="medium")
+with alert_column:
     st.markdown('### 🚦 Central de alertas')
-    st.markdown('''<div class="card" style="text-align:center;min-height:280px"><div class="note" style="letter-spacing:.13em">NÍVEL DE ALERTA</div><div class="lights"><span class="light" style="background:#334155"></span><span class="light" style="background:#334155"></span><span class="light" style="background:#334155"></span></div><div style="font-size:1.45rem;font-weight:850;color:#e2e8f0">AGUARDANDO IA</div><p class="note">Alertas serão ativados somente após o reconhecimento de resíduos e a validação dos limites.</p></div>''', unsafe_allow_html=True)
+    st.markdown('''<div class="card compact-card" style="text-align:center">
+      <div class="status-subtitle">NÍVEL DE ALERTA</div>
+      <div class="lights"><span class="light" style="background:#334155"></span><span class="light" style="background:#334155"></span><span class="light" style="background:#334155"></span></div>
+      <div style="font-size:1.35rem;font-weight:850;color:#fff">AGUARDANDO IA</div>
+      <p class="note">Alertas disponíveis após implementação da IA e validação dos limites.</p>
+    </div>''', unsafe_allow_html=True)
+with occupancy_column:
+    st.markdown('### 📊 Ocupação visual')
+    st.markdown('''<div class="card compact-card">
+      <div class="status-subtitle">SUPERFÍCIE VISÍVEL OCUPADA</div>
+      <div class="occupancy-number">—%</div>
+      <div class="occupancy-track"><div class="occupancy-fill"></div></div>
+      <div class="note" style="text-align:center">Aguardando medições reais da inteligência artificial.</div>
+    </div>''', unsafe_allow_html=True)
 
 st.markdown('<div class="section-title">Inteligência artificial e classificação</div>', unsafe_allow_html=True)
 st.markdown('### 🧠 Resíduos por material')
@@ -107,23 +129,48 @@ st.markdown('''<div class="card"><div class="note">Categorias que o modelo dever
 st.markdown('<div class="section-title">Evolução do monitoramento</div>', unsafe_allow_html=True)
 st.markdown('### 📈 Histórico de ocupação visual')
 
-# Estrutura do gráfico pronta, sem inventar dados de ocupação.
-# Quando a IA estiver integrada, substituir a lista vazia por medições reais
-# no formato {"minuto": 0, "ocupacao": 25.0}.
-import altair as alt
+# Não há resultados da IA ainda: o gráfico fica vazio, sem valores inventados.
+# No futuro, as medições reais poderão ser fornecidas no formato:
+# {"minuto": 15, "ocupacao": 37.5}
 medicoes_ocupacao = []
+
 grafico_ocupacao = (
     alt.Chart(alt.Data(values=medicoes_ocupacao))
     .mark_line(color="#38bdf8", strokeWidth=3, point=True)
     .encode(
-        x=alt.X("minuto:Q", title="Tempo de monitoramento (min)", scale=alt.Scale(domain=[0, 60])),
-        y=alt.Y("ocupacao:Q", title="Ocupação visual (%)", scale=alt.Scale(domain=[0, 100])),
-        tooltip=[alt.Tooltip("minuto:Q", title="Minuto"), alt.Tooltip("ocupacao:Q", title="Ocupação (%)")],
+        x=alt.X(
+            "minuto:Q",
+            title="Tempo de monitoramento (min)",
+            scale=alt.Scale(domain=[0, 60]),
+            axis=alt.Axis(values=[0, 15, 30, 45, 60], grid=False, labelAngle=0),
+        ),
+        y=alt.Y(
+            "ocupacao:Q",
+            title="Ocupação visual (%)",
+            scale=alt.Scale(domain=[0, 100]),
+            axis=alt.Axis(values=[0, 25, 50, 75, 100], grid=True, format=".0f"),
+        ),
+        tooltip=[
+            alt.Tooltip("minuto:Q", title="Minuto"),
+            alt.Tooltip("ocupacao:Q", title="Ocupação (%)", format=".1f"),
+        ],
     )
-    .properties(height=285)
+    .properties(height=230, background="#0b233e")
     .configure_view(strokeOpacity=0)
-    .configure_axis(labelColor="#cbd5e1", titleColor="#e2e8f0", gridColor="#254660", domainColor="#54718b", tickColor="#54718b")
+    .configure_axis(
+        labelColor="#ffffff",
+        titleColor="#ffffff",
+        gridColor="#ffffff",
+        gridOpacity=0.20,
+        domainColor="#ffffff",
+        domainOpacity=0.55,
+        tickColor="#ffffff",
+        labelFontSize=12,
+        titleFontSize=12,
+        labelPadding=9,
+    )
 )
-st.altair_chart(grafico_ocupacao, use_container_width=True)
+st.altair_chart(grafico_ocupacao, use_container_width=True, theme=None)
+st.caption("Aguardando medições reais. O histórico será preenchido quando a IA estiver integrada.")
 
 st.markdown('<div class="footer-note">🔱 NETUNO VISION · Inteligência Artificial a Serviço dos Manguezais<br>Equipe Netuno · SESI Santos · FLL BIOGLOW</div>', unsafe_allow_html=True)
