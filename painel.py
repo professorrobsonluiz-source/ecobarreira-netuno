@@ -1,4 +1,6 @@
 from pathlib import Path
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import requests
 import streamlit as st
@@ -46,6 +48,14 @@ hr {border-color:#285578!important;opacity:.65;}
 .occupancy-number {font-size:2.6rem;font-weight:850;color:#fff;text-align:center;margin:12px 0;}
 .occupancy-track {height:12px;background:#294863;border-radius:99px;margin:6px 0 14px;overflow:hidden;}
 .occupancy-fill {width:0%;height:100%;background:#38bdf8;border-radius:99px;}
+.live-pill {display:inline-flex;align-items:center;gap:7px;background:#103c34;border:1px solid #287b61;border-radius:30px;color:#85f3bd;font-size:.76rem;font-weight:800;letter-spacing:.08em;padding:5px 11px;}
+.live-dot {width:8px;height:8px;background:#5ee9a4;border-radius:50%;box-shadow:0 0 10px #5ee9a4;}
+.camera-caption {color:#bdd3e5;font-size:.8rem;margin:7px 0 0;}
+.system-card {background:linear-gradient(140deg,#102e4d,#0b233e);border:1px solid #285578;border-radius:17px;padding:20px 22px;}
+.system-row {padding:13px 0;border-bottom:1px solid #294b68;}
+.system-row:last-child {border-bottom:0;}
+.system-label {font-size:.77rem;color:#a9c7dc;letter-spacing:.04em;margin-bottom:5px;}
+.system-value {color:#f4faff;font-weight:650;font-size:.97rem;overflow-wrap:anywhere;}
 .footer-note {text-align:center;color:#9fbad0;font-size:.82rem;padding:20px 0;}
 @media(max-width:850px){[data-testid="stMainBlockContainer"],.block-container{padding:1rem .8rem 2rem!important;}.materials{grid-template-columns:repeat(2,minmax(0,1fr));}.brand{font-size:2rem;}}
 </style>
@@ -78,17 +88,14 @@ with c:
     st.metric("Situação", situacao)
 with d:
     st.metric("Análise inteligente", "PENDENTE")
-st.caption("Sem dados simulados: a ocupação e as contagens serão exibidas após a implementação e validação da IA.")
 
 st.markdown('<div class="section-title">Monitoramento e alertas</div>', unsafe_allow_html=True)
-st.markdown('### 📷 Câmera da ecobarreira')
-
-# A câmera permanece conectada ao endereço permanente do Cloudflare.
+# Câmera à esquerda e informações do sistema à direita.
+# Mantém o endereço permanente e a atualização automática a cada 5 segundos.
 CAMERA_URL = "https://camera.netunovision.com.br"
+cam_col, info_col = st.columns([3, 2], gap="large")
 
-# Centralização para evitar que a imagem ocupe toda a largura da tela.
-left_space, camera_column, right_space = st.columns([1, 2, 1], gap="small")
-with camera_column:
+with cam_col:
     @st.fragment(run_every="5s")
     def show_camera():
         try:
@@ -98,11 +105,24 @@ with camera_column:
                 raise ValueError("O servidor não retornou uma imagem")
             if len(response.content) > 3_000_000:
                 raise ValueError("Imagem acima do limite")
+            agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%H:%M:%S")
+            st.markdown('''<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 0 14px"><div class="card-title" style="margin:0">📷 Câmera da ecobarreira</div><div class="live-pill"><span class="live-dot"></span> AO VIVO</div></div>''', unsafe_allow_html=True)
             st.image(response.content, use_container_width=True)
-            st.caption("Imagem real da ESP32-CAM · Atualização aproximada a cada 5 segundos")
+            st.markdown(f'<div class="camera-caption">Imagem recebida às {agora} · Atualização aproximada a cada 5 segundos</div>', unsafe_allow_html=True)
         except (requests.RequestException, ValueError):
+            st.markdown('### 📷 Câmera da ecobarreira')
             st.warning("Câmera indisponível. Verifique a ESP32-CAM, o Flask e o Cloudflare Tunnel.")
     show_camera()
+
+with info_col:
+    st.markdown('### 📡 Status do sistema')
+    st.markdown('''<div class="system-card">
+      <div class="system-row"><div class="system-label">CÂMERA</div><div class="system-value">Monitoramento por imagens · 5 segundos</div></div>
+      <div class="system-row"><div class="system-label">INTELIGÊNCIA ARTIFICIAL</div><div class="system-value">Aguardando integração</div></div>
+      <div class="system-row"><div class="system-label">LOCAL MONITORADO</div><div class="system-value">Mangue São Manoel · Baixada Santista</div></div>
+      <div class="system-row"><div class="system-label">ANÁLISE AMBIENTAL</div><div class="system-value">Ocupação visual e resíduos visíveis</div></div>
+    </div>''', unsafe_allow_html=True)
+    st.caption('O selo AO VIVO aparece apenas quando uma imagem é recebida com sucesso.')
 
 alert_column, occupancy_column = st.columns(2, gap="medium")
 with alert_column:
@@ -171,6 +191,5 @@ grafico_ocupacao = (
     )
 )
 st.altair_chart(grafico_ocupacao, use_container_width=True, theme=None)
-st.caption("Aguardando medições reais. O histórico será preenchido quando a IA estiver integrada.")
 
 st.markdown('<div class="footer-note">🔱 NETUNO VISION · Inteligência Artificial a Serviço dos Manguezais<br>Equipe Netuno · SESI Santos · FLL BIOGLOW</div>', unsafe_allow_html=True)
