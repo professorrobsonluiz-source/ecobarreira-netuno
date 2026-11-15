@@ -1,120 +1,162 @@
-import streamlit as st
-import pandas as pd
-import requests
-from pathlib import Path
-from datetime import datetime
+import os
 from html import escape
+from pathlib import Path
+
+import requests
+import streamlit as st
 
 st.set_page_config(page_title='NETUNO VISION | Ecobarreira Inteligente', page_icon='🔱', layout='wide', initial_sidebar_state='collapsed')
-LOGO = Path(__file__).parent / 'logo_netuno.png'
-# URL pública temporária do Flask. Atualize quando reiniciar o Cloudflare.
-CAMERA_URL = 'https://tenant-instructors-suse-cake.trycloudflare.com'
-# A IA ainda não foi treinada. Quando houver API, configure o endpoint abaixo.
-IA_API_URL = ''
 
-st.markdown('''<style>
-.stApp{background:#07182d;color:#e2e8f0}.block-container{max-width:1450px;padding:1.6rem 2rem 3rem}
-h1,h2,h3{color:#38bdf8!important}[data-testid="stMetric"]{background:#102b48;border:1px solid #285782;border-radius:14px;padding:18px}
-[data-testid="stMetricLabel"] p{color:#cbd5e1!important}[data-testid="stMetricValue"]{color:white!important}
-.hero{background:linear-gradient(115deg,#0d355a,#07182d);border:1px solid #285782;border-radius:18px;padding:22px;margin-bottom:15px}
-.hero h1{margin:0;font-size:2.4rem!important}.subtitle{font-size:1.1rem;color:#e2e8f0;margin:4px 0}.small{color:#94a3b8;font-size:.9rem}
-.panel{background:#102b48;border:1px solid #285782;border-radius:14px;padding:18px;color:#e2e8f0}
-.lights{display:flex;gap:20px;justify-content:center;padding:12px}.light{width:43px;height:43px;border-radius:50%;border:2px solid #64748b}
-</style>''',unsafe_allow_html=True)
+PASTA = Path(__file__).resolve().parent
+LOGO = PASTA / 'logo_netuno.png'
 
-c_logo,c_title=st.columns([1,7],vertical_alignment='center')
-with c_logo:
-    if LOGO.exists(): st.image(str(LOGO),width=110)
-    else: st.markdown('## 🔱')
-with c_title:
-    st.markdown('''<div class="hero"><h1>NETUNO VISION</h1><div class="subtitle">Inteligência Artificial a Serviço dos Manguezais</div><div class="small">Ecobarreira Inteligente • Equipe Netuno • SESI Santos • FLL BIOGLOW</div></div>''',unsafe_allow_html=True)
+# URL pública do Flask/Cloudflare, sem /foto. Pode ser definida em
+# Streamlit Cloud > App settings > Secrets: CAMERA_URL = "https://..."
+try:
+    CAMERA_URL_CONFIG = str(st.secrets.get('CAMERA_URL', os.getenv('CAMERA_URL', ''))).strip()
+except Exception:
+    CAMERA_URL_CONFIG = os.getenv('CAMERA_URL', '').strip()
 
-modo=st.selectbox('Modo de operação',['Demonstração','Monitoramento Real'])
-st.caption('A IA ainda está em desenvolvimento. Os dados de demonstração são fictícios; nenhuma classificação real foi validada.')
+st.markdown('''
+<style>
+:root {color-scheme: dark;}
+.stApp {background: radial-gradient(circle at 50% -15%, #153b65 0%, #081a31 42%, #061326 100%);color:#f8fafc;}
+.block-container {max-width:1320px;padding:2.0rem 2.2rem 4rem;}
+header[data-testid="stHeader"] {background:transparent;}
+#MainMenu,footer {visibility:hidden;}
+h1,h2,h3,p {color:#f8fafc;}
+h2,h3 {color:#e0f2fe!important;}
+[data-testid="stWidgetLabel"] p, label p, [data-testid="stCaptionContainer"] p {color:#cbd5e1!important;}
+[data-testid="stMetric"] {background:linear-gradient(150deg,#153656,#0c2744);border:1px solid #315676;border-radius:17px;padding:20px;min-height:132px;box-shadow:0 8px 22px #0002;}
+[data-testid="stMetricLabel"] p {color:#cbd5e1!important;font-size:0.9rem!important;}
+[data-testid="stMetricValue"] {color:#ffffff!important;}
+[data-testid="stMetricValue"] div {color:#ffffff!important;}
+[data-testid="stSelectbox"] > div > div, [data-testid="stTextInput"] input {background:#eaf3ff!important;color:#07182d!important;}
+[data-testid="stAlert"] {background:#102b48!important;color:#f8fafc!important;border:1px solid #315676;border-radius:12px;}
+[data-testid="stAlert"] p {color:#f8fafc!important;}
+[data-testid="stExpander"] {background:#0b253f;border:1px solid #315676;border-radius:14px;}
+[data-testid="stExpander"] summary p {color:#f8fafc!important;}
+hr {border-color:#315676!important;}
+.hero {border:1px solid #28577d;border-radius:24px;background:linear-gradient(140deg,#102e4e,#071b31);padding:24px 18px;text-align:center;box-shadow:0 18px 40px #0003;margin-bottom:14px;}
+.hero-title {font-size:clamp(2.4rem,6vw,4.4rem);font-weight:900;letter-spacing:0.09em;color:#f8fafc;line-height:1.08;margin:8px 0;}
+.hero-subtitle {color:#38bdf8;font-size:clamp(1rem,2vw,1.25rem);font-weight:650;margin:8px 0;}
+.hero-meta {color:#cbd5e1;font-size:0.85rem;letter-spacing:0.09em;margin-top:12px;}
+.section-kicker {color:#38bdf8;letter-spacing:0.14em;text-transform:uppercase;font-weight:750;font-size:0.8rem;margin:12px 0;}
+.panel {border:1px solid #315676;background:linear-gradient(150deg,#102d4c,#091f38);border-radius:18px;padding:20px;}
+.status-dot {display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;}
+.small-muted {color:#cbd5e1;font-size:0.88rem;}
+.light-row {display:flex;justify-content:center;gap:22px;margin:20px 0;}
+.light {width:42px;height:42px;border-radius:50%;border:2px solid #64748b;}
+.footer {text-align:center;color:#94a3b8;font-size:0.85rem;padding:16px;}
+@media(max-width:768px){.block-container{padding:1rem .7rem 2rem}.hero{padding:20px 10px}.hero-title{letter-spacing:.03em}[data-testid="stMetric"]{padding:13px;min-height:110px}}
+</style>
+''', unsafe_allow_html=True)
 
-if modo=='Demonstração':
-    st.info('🧪 MODO DEMONSTRAÇÃO — valores simulados, não representam análise da câmera.')
-    with st.expander('Ajustar simulação',expanded=False):
-        plastico=st.slider('Plástico (objetos)',0,50,18)
-        madeira=st.slider('Madeira (objetos)',0,50,11)
-        metal=st.slider('Metal (objetos)',0,50,4)
-        outros=st.slider('Outros (objetos)',0,50,7)
-        ocupacao=st.slider('Ocupação visual simulada (%)',0,100,42)
-    contagens={'Plástico':plastico,'Madeira':madeira,'Metal':metal,'Outros':outros}
-    fonte='Simulação'
-else:
-    st.warning('📡 MONITORAMENTO REAL — câmera disponível quando o servidor estiver ligado. A classificação por IA ficará indisponível até treinarmos e conectarmos um modelo validado.')
-    contagens=None
-    ocupacao=None
-    fonte='IA ainda não integrada'
-    if IA_API_URL:
-        try:
-            r=requests.get(IA_API_URL,timeout=5)
-            r.raise_for_status()
-            dados=r.json()
-            # Contrato esperado da API de IA: contagens por categoria e ocupacao_visual_pct.
-            categorias=dados.get('contagens',{})
-            valor=dados.get('ocupacao_visual_pct')
-            if all(isinstance(categorias.get(k),int) and categorias[k]>=0 for k in ('Plástico','Madeira','Metal','Outros')) and isinstance(valor,(int,float)) and 0<=valor<=100:
-                contagens={k:categorias[k] for k in ('Plástico','Madeira','Metal','Outros')}
-                ocupacao=float(valor)
-                fonte='Análise automática (ainda requer validação)'
-        except (requests.RequestException,ValueError,TypeError):
-            st.warning('Não foi possível receber dados da IA.')
+with st.container():
+    st.markdown('<div class="hero">', unsafe_allow_html=True)
+    if LOGO.exists():
+        _, centro, _ = st.columns([4, 1, 4])
+        with centro:
+            st.image(str(LOGO), use_container_width=True)
+    else:
+        st.markdown('<div style="font-size:2.8rem;text-align:center">🔱</div>', unsafe_allow_html=True)
+    st.markdown('''<div class="hero-title">NETUNO VISION</div>
+    <div class="hero-subtitle">Inteligência Artificial a Serviço dos Manguezais</div>
+    <div class="hero-meta">ECOBARREIRA INTELIGENTE · EQUIPE NETUNO · SESI SANTOS · FLL BIOGLOW</div>''', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-if ocupacao is None:
-    situacao='SEM ANÁLISE'
-    cor='#64748b'
-else:
-    situacao='NORMAL' if ocupacao<40 else 'ATENÇÃO' if ocupacao<75 else 'CRÍTICO'
-    cor={'NORMAL':'#22c55e','ATENÇÃO':'#facc15','CRÍTICO':'#ef4444'}[situacao]
+st.caption('Central de monitoramento ambiental · Mangue São Manoel · Protótipo em desenvolvimento')
+st.info('📡 MONITORAMENTO REAL — A câmera pode mostrar imagens reais. A IA para identificar e contar resíduos ainda será implementada e validada.')
 
-st.subheader('📊 Indicadores ambientais')
-a,b,c,d=st.columns(4)
-a.metric('Ocupação visual estimada',f'{ocupacao:.0f}%' if ocupacao is not None else '—')
-b.metric('Resíduos identificados',sum(contagens.values()) if contagens is not None else '—')
-c.metric('Situação',situacao)
-d.metric('Origem dos dados',fonte)
-st.caption('Ocupação visual = proporção da região observada coberta por resíduos visíveis; não equivale à capacidade total da ecobarreira.')
 
-cam,alerta=st.columns([3,2],gap='large')
-with cam:
+def classificar(ocupacao):
+    if ocupacao is None:
+        return 'AGUARDANDO IA', '#94a3b8', 'A identificação automática ainda não está conectada.'
+    if ocupacao < 40:
+        return 'NORMAL', '#22c55e', 'Ocupação visual abaixo do limiar de atenção.'
+    if ocupacao < 75:
+        return 'ATENÇÃO', '#facc15', 'A ocupação visual merece acompanhamento.'
+    return 'CRÍTICO', '#ef4444', 'Ocupação visual elevada. Recomenda-se inspeção.'
+
+
+def foto_da_camera(url):
+    if not url:
+        st.info('Câmera ainda não configurada. Informe o endereço do servidor Flask/Cloudflare abaixo.')
+        return
+    try:
+        resposta = requests.get(url.rstrip('/') + '/foto', timeout=7)
+        resposta.raise_for_status()
+        if not resposta.headers.get('content-type', '').lower().startswith('image/'):
+            raise ValueError('A resposta não contém uma imagem.')
+        st.image(resposta.content, use_container_width=True)
+        st.caption('Fotografia da ESP32-CAM · Atualização automática aproximada a cada 5 segundos')
+    except (requests.RequestException, ValueError):
+        st.warning('Não foi possível acessar a câmera. Verifique o notebook, o Flask e o endereço do Cloudflare.')
+
+
+ocupacao, quantidades, total = None, None, None
+situacao, cor, mensagem = classificar(None)
+origem = 'IA PENDENTE'
+
+st.markdown('<div class="section-kicker">Visão geral do sistema</div>', unsafe_allow_html=True)
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    st.metric('Ocupação visual', f'{ocupacao}%' if ocupacao is not None else '—')
+with c2:
+    st.metric('Resíduos identificados', str(total) if total is not None else '—')
+with c3:
+    st.metric('Situação', situacao)
+with c4:
+    st.metric('Origem dos dados', origem)
+st.caption('Ocupação visual será a fração da região observada coberta por resíduos visíveis, após implementação e validação da IA.')
+
+st.divider()
+st.markdown('<div class="section-kicker">Monitoramento e alertas</div>', unsafe_allow_html=True)
+col_camera, col_alerta = st.columns([3, 2], gap='large')
+with col_camera:
     st.subheader('📷 Câmera da ecobarreira')
-    @st.fragment(run_every='5s')
-    def foto_ao_vivo():
-        try:
-            resposta=requests.get(CAMERA_URL.rstrip('/')+'/foto',timeout=5)
-            resposta.raise_for_status()
-            if not resposta.headers.get('Content-Type','').lower().startswith('image/'):
-                raise ValueError('O servidor não retornou imagem')
-            st.image(resposta.content,use_container_width=True)
-            st.caption('Fotografia atualizada aproximadamente a cada 5 segundos. Não é vídeo contínuo.')
-        except (requests.RequestException,ValueError):
-            st.info('Câmera indisponível. Verifique o Flask, o Cloudflare e o endereço CAMERA_URL.')
-    foto_ao_vivo()
-with alerta:
+    with st.expander('Configurar endereço da câmera', expanded=False):
+        st.caption('Use o endereço HTTPS temporário criado pelo Cloudflare, sem acrescentar /foto. Não compartilhe a câmera publicamente sem autorização.')
+        url_digitada = st.text_input('Endereço HTTPS da câmera', value=CAMERA_URL_CONFIG, placeholder='https://seu-tunel.trycloudflare.com')
+    # Evita consultas a URLs arbitrárias: restringe a HTTPS no domínio temporário Cloudflare.
+    from urllib.parse import urlparse
+    url = url_digitada.strip().rstrip('/')
+    parsed = urlparse(url)
+    if url and not (parsed.scheme == 'https' and parsed.hostname and parsed.hostname.endswith('.trycloudflare.com') and parsed.path in ('', '/')):
+        st.error('Informe apenas um endereço HTTPS válido terminado em .trycloudflare.com, sem caminho adicional.')
+    else:
+        @st.fragment(run_every='5s')
+        def atualizar_camera():
+            foto_da_camera(url)
+        atualizar_camera()
+with col_alerta:
     st.subheader('🚦 Central de alertas')
-    verde='#22c55e' if situacao=='NORMAL' else '#334155'
-    amarelo='#facc15' if situacao=='ATENÇÃO' else '#334155'
-    vermelho='#ef4444' if situacao=='CRÍTICO' else '#334155'
-    st.markdown(f'''<div class="panel"><div style="text-align:center">NÍVEL DE ALERTA</div><div class="lights"><div class="light" style="background:{verde}"></div><div class="light" style="background:{amarelo}"></div><div class="light" style="background:{vermelho}"></div></div><h2 style="text-align:center;color:{cor}!important">{escape(situacao)}</h2><p style="text-align:center">{'Exemplo demonstrativo. Limites de alerta provisórios.' if modo=='Demonstração' else 'Aguardando resultados da IA para gerar alertas.' if ocupacao is None else 'Estimativa automática; exige validação antes de uso operacional.'}</p></div>''',unsafe_allow_html=True)
+    cores = ['#22c55e' if situacao == 'NORMAL' else '#334155', '#facc15' if situacao == 'ATENÇÃO' else '#334155', '#ef4444' if situacao == 'CRÍTICO' else '#334155']
+    luzes = ''.join(f'<div class="light" style="background:{c};box-shadow:0 0 12px {c}55"></div>' for c in cores)
+    st.markdown(f'''<div class="panel" style="text-align:center;min-height:270px">
+        <div class="small-muted">NÍVEL DE ALERTA</div><div class="light-row">{luzes}</div>
+        <div style="font-size:1.7rem;font-weight:850;color:{cor}">{escape(situacao)}</div>
+        <p style="color:#e2e8f0;margin-top:12px">{escape(mensagem)}</p>
+        </div>''', unsafe_allow_html=True)
+    st.caption('Os alertas serão ativados somente após a implementação e validação da estimativa de ocupação visual.')
 
 st.divider()
+st.markdown('<div class="section-kicker">Inteligência artificial e classificação</div>', unsafe_allow_html=True)
 st.subheader('🧠 Análise inteligente de resíduos')
-if contagens is None:
-    st.info('Ainda não existem contagens reais. Vamos treinar a IA para reconhecer plástico, madeira, metal e outros materiais.')
-else:
-    df=pd.DataFrame({'Material':list(contagens),'Objetos identificados':list(contagens.values())})
-    st.bar_chart(df.set_index('Material'),y='Objetos identificados')
-    st.caption('Contagem de objetos visíveis, não massa ou volume. Dados simulados.' if modo=='Demonstração' else 'Resultados automáticos sujeitos a validação.')
-
-st.subheader('📈 Histórico de ocupação visual')
-if modo=='Demonstração':
-    df_hist=pd.DataFrame({'Horário':['08h','09h','10h','11h','12h'],'Ocupação visual (%)':[12,18,25,32,ocupacao]})
-    st.line_chart(df_hist.set_index('Horário'))
-    st.caption('Histórico fictício para demonstração.')
-else:
-    st.info('O histórico real será habilitado quando o processamento de IA estiver integrado e armazenando medições.')
+st.info('Aguardando desenvolvimento e validação da IA para classificar plástico, madeira, metal e outros. Nenhuma contagem real está disponível ainda.')
 
 st.divider()
-st.markdown('<div style="text-align:center;color:#94a3b8">🔱 NETUNO VISION • Equipe Netuno • SESI Santos • Projeto de Inovação FLL BIOGLOW</div>',unsafe_allow_html=True)
+st.subheader('📈 Histórico de ocupação visual')
+st.info('O histórico real aparecerá quando o servidor de IA começar a registrar análises com data e horário.')
+
+with st.expander('🔬 Como funcionará a IA no NETUNO VISION'):
+    st.markdown('''**1. Captura:** a ESP32-CAM fotografa a ecobarreira.  
+**2. Processamento:** o notebook recebe as imagens e executa o modelo de visão computacional.  
+**3. Classificação:** o modelo identifica possíveis resíduos das categorias plástico, madeira, metal e outros.  
+**4. Ocupação visual:** uma etapa de segmentação estima a área visível ocupada por resíduos na região monitorada.  
+**5. Validação:** os alunos comparam resultados automáticos com imagens anotadas manualmente.  
+**6. Alertas:** o painel apresenta resultados e tendências depois de validar os limites adotados.
+
+*O modelo de IA ainda não está implementado neste arquivo. A câmera, isoladamente, não identifica materiais.*''')
+
+st.markdown('<div class="footer">🔱 NETUNO VISION · Inteligência Artificial a Serviço dos Manguezais<br>Equipe Netuno · SESI Santos · FLL BIOGLOW · Projeto de inovação</div>', unsafe_allow_html=True)
