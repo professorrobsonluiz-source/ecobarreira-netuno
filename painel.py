@@ -106,15 +106,24 @@ st.markdown('''<div class="card"><div class="note">Categorias que o modelo dever
 
 st.markdown('<div class="section-title">Evolução do monitoramento</div>', unsafe_allow_html=True)
 st.markdown('### 📈 Histórico de ocupação visual')
-st.markdown('<div class="card"><div class="note">O gráfico será exibido quando o notebook começar a enviar análises reais com data, horário e ocupação visual.</div></div>', unsafe_allow_html=True)
 
-with st.expander("🔬 Como funcionará a inteligência artificial"):
-    st.markdown("""**Captura:** a ESP32-CAM fotografa a ecobarreira.  
-**Análise:** o notebook processa as imagens com um modelo treinado.  
-**Classificação:** identifica plástico, madeira, metal e outros, quando visualmente distinguíveis.  
-**Ocupação:** estima a fração da região de interesse coberta por resíduos visíveis.  
-**Validação:** a equipe compara as estimativas com anotações humanas.  
-**Alertas:** são ativados somente após validação dos limites de ocupação.  
+# Estrutura do gráfico pronta, sem inventar dados de ocupação.
+# Quando a IA estiver integrada, substituir a lista vazia por medições reais
+# no formato {"minuto": 0, "ocupacao": 25.0}.
+import altair as alt
+medicoes_ocupacao = []
+grafico_ocupacao = (
+    alt.Chart(alt.Data(values=medicoes_ocupacao))
+    .mark_line(color="#38bdf8", strokeWidth=3, point=True)
+    .encode(
+        x=alt.X("minuto:Q", title="Tempo de monitoramento (min)", scale=alt.Scale(domain=[0, 60])),
+        y=alt.Y("ocupacao:Q", title="Ocupação visual (%)", scale=alt.Scale(domain=[0, 100])),
+        tooltip=[alt.Tooltip("minuto:Q", title="Minuto"), alt.Tooltip("ocupacao:Q", title="Ocupação (%)")],
+    )
+    .properties(height=285)
+    .configure_view(strokeOpacity=0)
+    .configure_axis(labelColor="#cbd5e1", titleColor="#e2e8f0", gridColor="#254660", domainColor="#54718b", tickColor="#54718b")
+)
+st.altair_chart(grafico_ocupacao, use_container_width=True)
 
-*A identificação por IA ainda não está implementada. O painel não apresenta resultados fictícios.*""")
 st.markdown('<div class="footer-note">🔱 NETUNO VISION · Inteligência Artificial a Serviço dos Manguezais<br>Equipe Netuno · SESI Santos · FLL BIOGLOW</div>', unsafe_allow_html=True)
