@@ -88,11 +88,11 @@ cam_col, alert_col = st.columns([7, 3], gap="large")
 with cam_col:
     st.markdown('### 📷 Câmera da ecobarreira')
     with st.expander("⚙️ Configurar endereço da câmera", expanded=False):
-        camera_input = st.text_input("Endereço HTTPS do túnel Cloudflare (sem /foto)", value=CAMERA_DEFAULT, placeholder="https://exemplo.trycloudflare.com")
+        camera_input = st.text_input("Endereço HTTPS do túnel Cloudflare (sem /foto)", value="https://camera.netunovision.com.br", placeholder="https://exemplo.trycloudflare.com")
         st.caption("O túnel é temporário. A câmera só ficará acessível enquanto notebook, Flask e Cloudflare estiverem ligados. Evite divulgar o link publicamente.")
     camera_url = camera_input.strip().rstrip("/")
     parsed = urlparse(camera_url)
-    valid = (parsed.scheme == "https" and bool(parsed.hostname) and parsed.hostname.endswith(".trycloudflare.com") and parsed.path in ("", "/") and not parsed.username and not parsed.password and parsed.port is None and not parsed.query and not parsed.fragment)
+    valid = (parsed.scheme == "https" and bool(parsed.hostname) and parsed.hostname == "camera.netunovision.com.br" and parsed.path in ("", "/") and not parsed.username and not parsed.password and parsed.port is None and not parsed.query and not parsed.fragment)
 
     @st.fragment(run_every="5s")
     def show_camera():
@@ -100,7 +100,7 @@ with cam_col:
             st.markdown('<div class="camera-empty"><div style="font-size:42px">📷</div><strong>Aguardando conexão da câmera</strong><span>Informe o endereço Cloudflare acima.</span></div>', unsafe_allow_html=True)
             return
         if not valid:
-            st.error("Use somente o endereço HTTPS terminado em .trycloudflare.com, sem caminhos adicionais.")
+            st.error("Utilize o endereço HTTPS oficial da câmera NETUNO VISION.")
             return
         try:
             response = requests.get(camera_url + "/foto", timeout=6)
