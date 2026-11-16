@@ -50,10 +50,10 @@ button[aria-selected="true"][data-baseweb="tab"] {color:#ffffff!important;border
 @media(max-width:850px){.material-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.block-container{padding-left:.8rem!important;padding-right:.8rem!important}}
 </style>''', unsafe_allow_html=True)
 
-header_a, header_b = st.columns([1, 6], vertical_alignment='center')
+header_a, header_b = st.columns([1, 13], gap='small', vertical_alignment='center')
 with header_a:
     try:
-        st.image('logo_netuno.png', width=115)
+        st.image('logo_netuno.png', width=95)
     except Exception:
         st.markdown('## 🔱')
 with header_b:
