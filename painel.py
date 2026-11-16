@@ -39,6 +39,14 @@ button[aria-selected="true"][data-baseweb="tab"] {color:#ffffff!important;border
 .material-symbol{font-size:27px;margin-bottom:7px}
 .material-label{font-size:16px;color:#fff;font-weight:750}
 .material-value{font-size:30px;color:#fff;font-weight:850;margin-top:8px}
+.overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:12px 0 26px}
+.overview-card{background:linear-gradient(145deg,#163a59,#102d4b);border:1px solid #315979;border-radius:14px;padding:20px 18px;min-height:158px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 6px 20px #00000016}
+.overview-top{display:flex;align-items:center;gap:9px;color:#c4e0f2;font-size:13px;font-weight:700;line-height:1.35}
+.overview-icon{font-size:21px;flex-shrink:0}
+.overview-value{font-size:25px;line-height:1.2;font-weight:750;color:#fff;margin-top:13px;overflow-wrap:anywhere}
+.overview-help{font-size:12px;color:#a6c5da;line-height:1.4;margin-top:8px}
+@media(max-width:1050px){.overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.overview-grid{grid-template-columns:1fr}}
 @media(max-width:850px){.material-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.block-container{padding-left:.8rem!important;padding-right:.8rem!important}}
 </style>''', unsafe_allow_html=True)
 
@@ -55,11 +63,28 @@ with header_b:
 st.divider()
 st.caption('CENTRAL DE MONITORAMENTO AMBIENTAL · MANGUE SÃO MANOEL')
 st.markdown('### Visão geral do sistema')
-a,b,c,d=st.columns(4)
-with a: st.metric('Ocupação visual', '—')
-with b: st.metric('Resíduos identificados', '—')
-with c: st.metric('Situação', 'AGUARDANDO IA')
-with d: st.metric('Análise inteligente', 'PENDENTE')
+st.markdown('''<div class="overview-grid">
+  <div class="overview-card">
+    <div class="overview-top"><span class="overview-icon">🌊</span><span>Ocupação da ecobarreira</span></div>
+    <div class="overview-value">— %</div>
+    <div class="overview-help">Aguardando análise visual</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-top"><span class="overview-icon">♻️</span><span>Resíduos identificados</span></div>
+    <div class="overview-value">—</div>
+    <div class="overview-help">Classificação em desenvolvimento</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-top"><span class="overview-icon">📡</span><span>Situação ambiental</span></div>
+    <div class="overview-value">Em análise</div>
+    <div class="overview-help">Monitoramento em implantação</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-top"><span class="overview-icon">🧠</span><span>Inteligência artificial</span></div>
+    <div class="overview-value">Em preparação</div>
+    <div class="overview-help">Reconhecimento de materiais</div>
+  </div>
+</div>''', unsafe_allow_html=True)
 
 st.markdown('### 📡 Monitoramento e alertas')
 left,right=st.columns([3.2,1],gap='large')
