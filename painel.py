@@ -9,7 +9,7 @@ AO_VIVO_URL = 'https://camera.netunovision.com.br/ao-vivo'
 
 st.markdown('''<style>
 .stApp {background:linear-gradient(145deg,#071a31,#0b2746);color:#f5fbff}
-.block-container {padding-top:1.5rem;max-width:1600px}
+.block-container {padding-top:1.5rem;max-width:1800px}
 h1,h2,h3,p,span,label {color:inherit}
 h1 {font-size:2.6rem!important;letter-spacing:.05em}
 h3 {font-size:1.25rem!important}
@@ -46,15 +46,35 @@ with c: st.metric('Situação', 'AGUARDANDO IA')
 with d: st.metric('Análise inteligente', 'PENDENTE')
 
 st.markdown('### 📡 Monitoramento e alertas')
-left,right=st.columns([1.6,1],gap='large')
+left,right=st.columns([3.2,1],gap='large')
 with left:
     tab_live,tab_photo=st.tabs(['🎥 Câmera ao vivo','📷 Fotografias automáticas'])
     with tab_live:
         st.markdown('#### Transmissão ao vivo da ecobarreira')
-        # Embed remote HTML page; its JavaScript refreshes the picture every second.
-        components.iframe(AO_VIVO_URL, height=690, scrolling=True)
-        st.caption('Atualização aproximada a cada segundo. Para funcionar, o notebook com Flask e Cloudflare Tunnel precisa estar ligado e conectado à câmera.')
-        st.markdown(f'[Abrir transmissão em outra aba, se necessário]({AO_VIVO_URL})')
+        # Exibe apenas as imagens, sem o cabecalho da pagina remota.
+        components.html("""
+        <!doctype html><html><head><meta charset="utf-8">
+        <style>
+        *{box-sizing:border-box}html,body{margin:0;overflow:hidden;background:#071a31}
+        .camera{width:100%;height:560px;display:flex;align-items:center;justify-content:center}
+        img{display:block;max-width:100%;max-height:100%;object-fit:contain;border-radius:10px}
+        </style></head><body>
+        <div class="camera"><img id="live" alt="Camera da ecobarreira"></div>
+        <script>
+        const el=document.getElementById('live');
+        const endpoint='https://camera.netunovision.com.br/foto';
+        let pending=false;
+        function refresh(){
+          if(pending)return;
+          pending=true;
+          const pic=new Image();
+          pic.onload=()=>{el.src=pic.src;pending=false};
+          pic.onerror=()=>{pending=false};
+          pic.src=endpoint+'?t='+Date.now();
+        }
+        refresh();setInterval(refresh,1200);
+        </script></body></html>
+        """,height=565,scrolling=False)
     with tab_photo:
         st.markdown('#### Última fotografia da ecobarreira')
         # Cache busting is driven by a Streamlit fragment, not a manual refresh.
