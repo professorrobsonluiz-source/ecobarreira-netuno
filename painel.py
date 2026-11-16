@@ -24,6 +24,22 @@ button[aria-selected="true"][data-baseweb="tab"] {color:#ffffff!important;border
 .info-label {font-size:11px;color:#73cfff;letter-spacing:.09em;text-transform:uppercase}
 .info-value {font-size:14px;color:white;font-weight:600;margin-top:4px}
 .smallnote {color:#9ab8d0;font-size:12px}
+[data-testid="stMainBlockContainer"],.block-container{max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important}
+.section-kicker{font-size:12px;font-weight:800;letter-spacing:.15em;color:#52c8ff;text-transform:uppercase;margin:28px 0 8px}
+.dash-card{background:linear-gradient(140deg,#153858,#0b2541);border:1px solid #315979;border-radius:16px;padding:22px;box-shadow:0 6px 20px #0002}
+.compact{min-height:215px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.card-eyebrow{font-size:12px;letter-spacing:.12em;color:#9ddcff;font-weight:750}
+.card-big{font-size:36px;font-weight:850;color:#fff;margin:12px 0}
+.card-help{color:#b4cee3;font-size:13px;line-height:1.6}
+.signal{display:flex;gap:15px;margin:20px 0}
+.signal span{display:block;width:42px;height:42px;border-radius:50%;background:#33465c;border:1px solid #6a879e}
+.progress-track{width:100%;height:12px;border-radius:12px;background:#294a68;margin:8px 0 16px}
+.material-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0}
+.material-card{background:#081c34;border:1px solid #315979;border-radius:14px;text-align:center;padding:22px 10px}
+.material-symbol{font-size:27px;margin-bottom:7px}
+.material-label{font-size:16px;color:#fff;font-weight:750}
+.material-value{font-size:30px;color:#fff;font-weight:850;margin-top:8px}
+@media(max-width:850px){.material-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.block-container{padding-left:.8rem!important;padding-right:.8rem!important}}
 </style>''', unsafe_allow_html=True)
 
 header_a, header_b = st.columns([1, 6], vertical_alignment='center')
@@ -94,15 +110,34 @@ with right:
       <div class="info-row"><div class="info-label">Objetivo ambiental</div><div class="info-value">Acompanhar o acúmulo de resíduos e apoiar ações de limpeza</div></div>
     </div>''',unsafe_allow_html=True)
 
+st.markdown('<div class="section-kicker">Monitoramento e indicadores</div>', unsafe_allow_html=True)
 col_alert,col_occup=st.columns(2,gap='large')
 with col_alert:
     st.markdown('### 🚦 Central de alertas')
-    st.markdown('<div class="info-panel" style="text-align:center"><div class="info-label">Nível de alerta</div><h3>⚪ ⚪ ⚪</h3><strong>AGUARDANDO IA</strong><p class="smallnote">Alertas disponíveis após implementação e validação dos limites.</p></div>',unsafe_allow_html=True)
+    st.markdown('''<div class="dash-card compact">
+      <div class="card-eyebrow">NÍVEL DE ALERTA</div>
+      <div class="signal"><span></span><span></span><span></span></div>
+      <div style="font-size:20px;font-weight:800;color:#fff">AGUARDANDO IA</div>
+      <div class="card-help" style="margin-top:12px">Os alertas serão ativados após a validação dos critérios ambientais.</div>
+    </div>''',unsafe_allow_html=True)
 with col_occup:
     st.markdown('### 📊 Ocupação visual')
-    st.markdown('<div class="info-panel" style="text-align:center"><div class="info-label">Superfície visível ocupada</div><h2>—%</h2><p class="smallnote">Aguardando medições reais da inteligência artificial.</p></div>',unsafe_allow_html=True)
-    st.progress(0)
+    st.markdown('''<div class="dash-card compact">
+      <div class="card-eyebrow">SUPERFÍCIE VISÍVEL OCUPADA</div>
+      <div class="card-big">—%</div>
+      <div class="progress-track"></div>
+      <div class="card-help">Aguardando a primeira medição da inteligência artificial.</div>
+    </div>''',unsafe_allow_html=True)
 
-st.caption('INTELIGÊNCIA ARTIFICIAL E CLASSIFICAÇÃO')
+st.markdown('<div class="section-kicker">Inteligência artificial e classificação</div>',unsafe_allow_html=True)
 st.markdown('### 🧠 Resíduos por material')
-st.info('Classificação de plástico, madeira, metal e outros materiais: em desenvolvimento. Nenhum resultado de IA é apresentado como medição real antes da integração.')
+st.markdown('''<div class="dash-card">
+  <div class="card-help">Categorias previstas para identificação automática de resíduos</div>
+  <div class="material-grid">
+    <div class="material-card"><div class="material-symbol">♻️</div><div class="material-label">Plástico</div><div class="material-value">—</div></div>
+    <div class="material-card"><div class="material-symbol">🪵</div><div class="material-label">Madeira</div><div class="material-value">—</div></div>
+    <div class="material-card"><div class="material-symbol">🔩</div><div class="material-label">Metal</div><div class="material-value">—</div></div>
+    <div class="material-card"><div class="material-symbol">📦</div><div class="material-label">Outros</div><div class="material-value">—</div></div>
+  </div>
+  <div class="card-help">A classificação automática está em desenvolvimento. Os indicadores serão preenchidos com dados reais após a integração da IA.</div>
+</div>''',unsafe_allow_html=True)
