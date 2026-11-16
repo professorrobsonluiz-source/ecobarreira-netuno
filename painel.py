@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+import hashlib
 from zoneinfo import ZoneInfo
 
 import requests
@@ -91,38 +92,72 @@ with d:
 
 st.markdown('<div class="section-title">Monitoramento e alertas</div>', unsafe_allow_html=True)
 # Câmera à esquerda e informações do sistema à direita.
-# Mantém o endereço permanente e a atualização automática a cada 5 segundos.
-CAMERA_URL = "https://camera.netunovision.com.br"
+# A imagem mais recente é obtida diretamente do Cloudflare Worker/R2.
+# O ESP32-CAM envia uma nova imagem aproximadamente a cada 60 segundos.
+CAMERA_URL = "https://netuno-camera.professorrobsonluiz.workers.dev/foto"
 cam_col, info_col = st.columns([3, 2], gap="large")
 
 with cam_col:
-    @st.fragment(run_every="5s")
+    @st.fragment(run_every="15s")
     def show_camera():
+        st.markdown("### 📷 Câmera da ecobarreira")
         try:
-            response = requests.get(CAMERA_URL + "/foto", timeout=6)
+            response = requests.get(
+                CAMERA_URL,
+                headers={"Cache-Control": "no-cache", "Pragma": "no-cache"},
+                params={"t": int(datetime.now().timestamp())},
+                timeout=12,
+            )
             response.raise_for_status()
             if not response.headers.get("content-type", "").lower().startswith("image/"):
                 raise ValueError("O servidor não retornou uma imagem")
-            if len(response.content) > 3_000_000:
-                raise ValueError("Imagem acima do limite")
+            if not response.content or len(response.content) > 3_000_000:
+                raise ValueError("Imagem vazia ou acima do limite de 3 MB")
+
+            # A leitura de uma imagem armazenada não comprova que a câmera está online.
+            # Detectamos quando o conteúdo muda, sem inventar a hora da captura.
+            assinatura = hashlib.sha256(response.content).hexdigest()
             agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%H:%M:%S")
-            st.markdown('''<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 0 14px"><div class="card-title" style="margin:0">📷 Câmera da ecobarreira</div><div class="live-pill"><span class="live-dot"></span> AO VIVO</div></div>''', unsafe_allow_html=True)
+            if st.session_state.get("ultima_assinatura_camera") != assinatura:
+                st.session_state["ultima_assinatura_camera"] = assinatura
+                st.session_state["ultima_mudanca_camera"] = agora
+                st.session_state["mudanca_observada_camera"] = (
+                    st.session_state.get("camera_ja_consultada", False)
+                )
+            st.session_state["camera_ja_consultada"] = True
+
             st.image(response.content, use_container_width=True)
-            st.markdown(f'<div class="camera-caption">Imagem recebida às {agora} · Atualização aproximada a cada 5 segundos</div>', unsafe_allow_html=True)
-        except (requests.RequestException, ValueError):
-            st.markdown('### 📷 Câmera da ecobarreira')
-            st.warning("Câmera indisponível. Verifique a ESP32-CAM, o Flask e o Cloudflare Tunnel.")
+            st.success("Imagem disponível na Cloudflare R2")
+            if st.session_state.get("mudanca_observada_camera", False):
+                st.caption(
+                    f"Última mudança de imagem detectada neste painel às "
+                    f"{st.session_state['ultima_mudanca_camera']} (horário de Brasília). "
+                    "Verificação automática a cada 15 segundos."
+                )
+            else:
+                st.caption(
+                    "Fotografia armazenada; horário da captura não informado. "
+                    "Verificação automática a cada 15 segundos."
+                )
+            st.caption("A imagem pode permanecer visível mesmo com a ESP32-CAM desligada.")
+        except (requests.RequestException, ValueError) as erro:
+            st.warning(
+                "Não foi possível obter a fotografia da Cloudflare. "
+                "Verifique se já existe uma imagem no R2 e se o Worker está acessível."
+            )
+            st.caption(f"Detalhe técnico: {erro}")
     show_camera()
 
 with info_col:
-    st.markdown('### 📡 Status do sistema')
+    st.markdown("### 📡 Status do sistema")
     st.markdown('''<div class="system-card">
-      <div class="system-row"><div class="system-label">CÂMERA</div><div class="system-value">Monitoramento por imagens · 5 segundos</div></div>
+      <div class="system-row"><div class="system-label">CÂMERA</div><div class="system-value">ESP32-CAM · envio programado a cada 60 segundos</div></div>
+      <div class="system-row"><div class="system-label">ARMAZENAMENTO</div><div class="system-value">Cloudflare Worker + R2 · sem notebook intermediário</div></div>
       <div class="system-row"><div class="system-label">INTELIGÊNCIA ARTIFICIAL</div><div class="system-value">Aguardando integração</div></div>
       <div class="system-row"><div class="system-label">LOCAL MONITORADO</div><div class="system-value">Mangue São Manoel · Baixada Santista</div></div>
-      <div class="system-row"><div class="system-label">ANÁLISE AMBIENTAL</div><div class="system-value">Ocupação visual e resíduos visíveis</div></div>
+      <div class="system-row"><div class="system-label">ANÁLISE AMBIENTAL</div><div class="system-value">Ocupação visual e resíduos visíveis · em desenvolvimento</div></div>
     </div>''', unsafe_allow_html=True)
-    st.caption('O selo AO VIVO aparece apenas quando uma imagem é recebida com sucesso.')
+    st.caption("A disponibilidade da foto não comprova que a câmera esteja conectada neste instante.")
 
 alert_column, occupancy_column = st.columns(2, gap="medium")
 with alert_column:
