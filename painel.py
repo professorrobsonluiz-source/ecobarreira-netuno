@@ -98,66 +98,91 @@ CAMERA_URL = "https://netuno-camera.professorrobsonluiz.workers.dev/foto"
 cam_col, info_col = st.columns([3, 2], gap="large")
 
 with cam_col:
-    @st.fragment(run_every="15s")
-    def show_camera():
-        st.markdown("### 📷 Câmera da ecobarreira")
+    tab_fotos, tab_ao_vivo = st.tabs(["📷 Fotografias automáticas", "🎥 Câmera ao vivo"])
+
+    with tab_fotos:
+        @st.fragment(run_every="15s")
+        def show_camera():
+            st.markdown("### Última fotografia da ecobarreira")
+            try:
+                response = requests.get(
+                    CAMERA_URL,
+                    headers={"Cache-Control": "no-cache", "Pragma": "no-cache"},
+                    params={"t": int(datetime.now().timestamp())},
+                    timeout=12,
+                )
+                response.raise_for_status()
+                if not response.headers.get("content-type", "").lower().startswith("image/"):
+                    raise ValueError("O servidor não retornou uma imagem")
+                if not response.content or len(response.content) > 3_000_000:
+                    raise ValueError("Imagem vazia ou acima do limite de 3 MB")
+
+                assinatura = hashlib.sha256(response.content).hexdigest()
+                agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%H:%M:%S")
+                if st.session_state.get("ultima_assinatura_camera") != assinatura:
+                    st.session_state["ultima_assinatura_camera"] = assinatura
+                    st.session_state["ultima_mudanca_camera"] = agora
+                    st.session_state["mudanca_observada_camera"] = (
+                        st.session_state.get("camera_ja_consultada", False)
+                    )
+                st.session_state["camera_ja_consultada"] = True
+
+                st.image(response.content, use_container_width=True)
+                if st.session_state.get("mudanca_observada_camera", False):
+                    st.caption(
+                        "Nova imagem detectada neste painel às "
+                        f"{st.session_state['ultima_mudanca_camera']} (horário de Brasília). "
+                        "Verificação a cada 15 segundos."
+                    )
+                else:
+                    st.caption(
+                        "Última fotografia armazenada. O horário da captura não está disponível. "
+                        "Verificação a cada 15 segundos."
+                    )
+                st.caption("Uma fotografia armazenada pode continuar visível mesmo com a câmera desligada.")
+            except (requests.RequestException, ValueError):
+                st.warning("Não foi possível carregar a fotografia. Verifique a conexão da câmera.")
+
+        show_camera()
+
+    with tab_ao_vivo:
+        st.markdown("### Transmissão ao vivo")
+        st.info(
+            "A câmera transmite vídeo na rede Wi-Fi local. Para assistir pela internet "
+            "de qualquer lugar, ainda será necessário configurar um serviço de transmissão. "
+            "As fotografias automáticas já funcionam remotamente."
+        )
+        # O endereço é da ESP32-CAM na rede do hotspot e pode mudar.
+        # Um link HTTP aberto em outra aba evita tentar embutir conteúdo inseguro
+        # (HTTP) dentro da página pública HTTPS do Streamlit.
+        endereco_local = st.text_input(
+            "Endereço IP local da ESP32-CAM",
+            value="10.202.149.175",
+            help="Confira o IP no Monitor Serial quando conectar a câmera ao hotspot.",
+        ).strip()
+        import ipaddress
         try:
-            response = requests.get(
-                CAMERA_URL,
-                headers={"Cache-Control": "no-cache", "Pragma": "no-cache"},
-                params={"t": int(datetime.now().timestamp())},
-                timeout=12,
+            ipaddress.IPv4Address(endereco_local)
+            url_camera_local = f"http://{endereco_local}/"
+            st.link_button("🎥 Abrir câmera ao vivo (mesma rede Wi-Fi)", url_camera_local)
+            st.caption(
+                "Abra pelo dispositivo conectado à mesma rede da ESP32-CAM. "
+                "Na página da câmera, clique em Start Stream. "
+                "O endereço pode mudar após reiniciar o hotspot."
             )
-            response.raise_for_status()
-            if not response.headers.get("content-type", "").lower().startswith("image/"):
-                raise ValueError("O servidor não retornou uma imagem")
-            if not response.content or len(response.content) > 3_000_000:
-                raise ValueError("Imagem vazia ou acima do limite de 3 MB")
-
-            # A leitura de uma imagem armazenada não comprova que a câmera está online.
-            # Detectamos quando o conteúdo muda, sem inventar a hora da captura.
-            assinatura = hashlib.sha256(response.content).hexdigest()
-            agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%H:%M:%S")
-            if st.session_state.get("ultima_assinatura_camera") != assinatura:
-                st.session_state["ultima_assinatura_camera"] = assinatura
-                st.session_state["ultima_mudanca_camera"] = agora
-                st.session_state["mudanca_observada_camera"] = (
-                    st.session_state.get("camera_ja_consultada", False)
-                )
-            st.session_state["camera_ja_consultada"] = True
-
-            st.image(response.content, use_container_width=True)
-            st.success("Imagem disponível na Cloudflare R2")
-            if st.session_state.get("mudanca_observada_camera", False):
-                st.caption(
-                    f"Última mudança de imagem detectada neste painel às "
-                    f"{st.session_state['ultima_mudanca_camera']} (horário de Brasília). "
-                    "Verificação automática a cada 15 segundos."
-                )
-            else:
-                st.caption(
-                    "Fotografia armazenada; horário da captura não informado. "
-                    "Verificação automática a cada 15 segundos."
-                )
-            st.caption("A imagem pode permanecer visível mesmo com a ESP32-CAM desligada.")
-        except (requests.RequestException, ValueError) as erro:
-            st.warning(
-                "Não foi possível obter a fotografia da Cloudflare. "
-                "Verifique se já existe uma imagem no R2 e se o Worker está acessível."
-            )
-            st.caption(f"Detalhe técnico: {erro}")
-    show_camera()
+        except ipaddress.AddressValueError:
+            st.warning("Informe um endereço IPv4 válido da ESP32-CAM.")
 
 with info_col:
-    st.markdown("### 📡 Status do sistema")
+    st.markdown("### 🌿 Monitoramento ambiental")
     st.markdown('''<div class="system-card">
-      <div class="system-row"><div class="system-label">CÂMERA</div><div class="system-value">ESP32-CAM · envio programado a cada 60 segundos</div></div>
-      <div class="system-row"><div class="system-label">ARMAZENAMENTO</div><div class="system-value">Cloudflare Worker + R2 · sem notebook intermediário</div></div>
-      <div class="system-row"><div class="system-label">INTELIGÊNCIA ARTIFICIAL</div><div class="system-value">Aguardando integração</div></div>
-      <div class="system-row"><div class="system-label">LOCAL MONITORADO</div><div class="system-value">Mangue São Manoel · Baixada Santista</div></div>
-      <div class="system-row"><div class="system-label">ANÁLISE AMBIENTAL</div><div class="system-value">Ocupação visual e resíduos visíveis · em desenvolvimento</div></div>
+      <div class="system-row"><div class="system-label">MONITORAMENTO POR CÂMERA</div><div class="system-value">Captura automática de imagens a cada 60 segundos</div></div>
+      <div class="system-row"><div class="system-label">ACOMPANHAMENTO REMOTO</div><div class="system-value">Fotografias disponíveis pela internet</div></div>
+      <div class="system-row"><div class="system-label">INTELIGÊNCIA ARTIFICIAL</div><div class="system-value">Identificação de resíduos em desenvolvimento</div></div>
+      <div class="system-row"><div class="system-label">ÁREA DE MONITORAMENTO</div><div class="system-value">Mangue São Manoel · Baixada Santista</div></div>
+      <div class="system-row"><div class="system-label">OBJETIVO AMBIENTAL</div><div class="system-value">Acompanhar o acúmulo de resíduos e apoiar ações de limpeza</div></div>
     </div>''', unsafe_allow_html=True)
-    st.caption("A disponibilidade da foto não comprova que a câmera esteja conectada neste instante.")
+    st.caption("As fotografias não comprovam que a câmera esteja conectada neste instante.")
 
 alert_column, occupancy_column = st.columns(2, gap="medium")
 with alert_column:
