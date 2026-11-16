@@ -56,8 +56,8 @@ with left:
         <!doctype html><html><head><meta charset="utf-8">
         <style>
         *{box-sizing:border-box}html,body{margin:0;overflow:hidden;background:#071a31}
-        .camera{width:100%;height:560px;display:flex;align-items:center;justify-content:center}
-        img{display:block;max-width:100%;max-height:100%;object-fit:contain;border-radius:10px}
+        .camera{width:100%;height:650px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        img{display:block;width:100%;height:100%;object-fit:contain;border-radius:10px}
         </style></head><body>
         <div class="camera"><img id="live" alt="Camera da ecobarreira"></div>
         <script>
@@ -74,7 +74,7 @@ with left:
         }
         refresh();setInterval(refresh,1200);
         </script></body></html>
-        """,height=565,scrolling=False)
+        """,height=655,scrolling=False)
     with tab_photo:
         st.markdown('#### Última fotografia da ecobarreira')
         # Cache busting is driven by a Streamlit fragment, not a manual refresh.
@@ -93,7 +93,6 @@ with right:
       <div class="info-row"><div class="info-label">Área de monitoramento</div><div class="info-value">Mangue São Manoel · Baixada Santista</div></div>
       <div class="info-row"><div class="info-label">Objetivo ambiental</div><div class="info-value">Acompanhar o acúmulo de resíduos e apoiar ações de limpeza</div></div>
     </div>''',unsafe_allow_html=True)
-    st.caption('A disponibilidade da última fotografia não confirma que a câmera esteja conectada neste instante.')
 
 col_alert,col_occup=st.columns(2,gap='large')
 with col_alert:
