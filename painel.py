@@ -1,6 +1,8 @@
 import streamlit as st
 import streamlit.components.v1 as components
 from datetime import datetime
+from pathlib import Path
+import base64
 
 st.set_page_config(page_title='NETUNO VISION | Ecobarreira Inteligente', page_icon='🔱', layout='wide', initial_sidebar_state='collapsed')
 
@@ -48,20 +50,39 @@ button[aria-selected="true"][data-baseweb="tab"] {color:#ffffff!important;border
 @media(max-width:1050px){.overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.overview-grid{grid-template-columns:1fr}}
 @media(max-width:850px){.material-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.block-container{padding-left:.8rem!important;padding-right:.8rem!important}}
+
+/* Cabeçalho igual ao modelo anterior: logo e título lado a lado */
+.netuno-header{display:flex;align-items:center;gap:30px;padding:16px 0 28px;min-height:190px}
+.netuno-logo{display:block;width:130px;height:145px;object-fit:contain;flex-shrink:0;border-radius:8px}
+.netuno-fallback{display:flex;align-items:center;justify-content:center;font-size:65px;background:#123251}
+.netuno-header-text{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.netuno-title{color:#fff;font-size:clamp(32px,3vw,51px);font-weight:850;letter-spacing:.07em;line-height:1.12}
+.netuno-subtitle{color:#46c9ff;font-size:clamp(14px,1.25vw,19px);font-weight:750}
+.netuno-identity{color:#9bb7cc;font-size:12px;font-weight:650;letter-spacing:.065em;line-height:1.5}
+.netuno-divider{height:1px;background:#25415a;margin:0 0 25px}
+.netuno-location{margin:0 0 20px!important}
+@media(max-width:650px){.netuno-header{gap:14px;min-height:0;padding:12px 0 20px}.netuno-logo{width:83px;height:100px}.netuno-title{font-size:26px;letter-spacing:.025em}.netuno-subtitle{font-size:12px}.netuno-identity{font-size:9px;letter-spacing:0}}
 </style>''', unsafe_allow_html=True)
 
-header_a, header_b = st.columns([1, 13], gap='small', vertical_alignment='center')
-with header_a:
-    try:
-        st.image('logo_netuno.png', width=95)
-    except Exception:
-        st.markdown('## 🔱')
-with header_b:
-    st.title('NETUNO VISION')
-    st.markdown('**Inteligência Artificial a Serviço dos Manguezais**')
-    st.caption('ECOBARREIRA INTELIGENTE · EQUIPE NETUNO · SESI SANTOS · FLL BIOGLOW')
-st.divider()
-st.caption('CENTRAL DE MONITORAMENTO AMBIENTAL · MANGUE SÃO MANOEL')
+# Cabeçalho original: logo e textos próximos, sem espaçamento das colunas.
+logo_path = Path(__file__).resolve().parent / 'logo_netuno.png'
+if logo_path.exists():
+    logo_base64 = base64.b64encode(logo_path.read_bytes()).decode('ascii')
+    logo_html = f'<img class="netuno-logo" src="data:image/png;base64,{logo_base64}" alt="Logotipo da Equipe Netuno">'
+else:
+    logo_html = '<div class="netuno-logo netuno-fallback">🔱</div>'
+
+st.markdown(f'''<div class="netuno-header">
+  {logo_html}
+  <div class="netuno-header-text">
+    <div class="netuno-title">NETUNO VISION</div>
+    <div class="netuno-subtitle">Inteligência Artificial a Serviço dos Manguezais</div>
+    <div class="netuno-identity">ECOBARREIRA INTELIGENTE · EQUIPE NETUNO · SESI SANTOS · FLL BIOGLOW</div>
+  </div>
+</div>
+<div class="netuno-divider"></div>
+<div class="section-kicker netuno-location">CENTRAL DE MONITORAMENTO AMBIENTAL · MANGUE SÃO MANOEL</div>''', unsafe_allow_html=True)
+
 st.markdown('### Visão geral do sistema')
 st.markdown('''<div class="overview-grid">
   <div class="overview-card">
